@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Me Produz — Dashboard MRR</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0e0e0e;
+    --surface: #161616;
+    --surface2: #1e1e1e;
+    --border: #2a2a2a;
+    --yellow: #c8d400;
+    --yellow-dim: rgba(200,212,0,0.10);
+    --yellow-glow: rgba(200,212,0,0.22);
+    --text: #f0f0f0;
+    --muted: #666;
+    --muted2: #444;
+    --green: #5ddb7c;
+    --red: #ff4d6d;
+    --orange: #ff9f43;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Outfit', sans-serif;
+    min-height: 100vh;
+    padding: 36px 32px;
+    overflow-x: hidden;
+  }
+  body::before {
+    content:'';
+    position:fixed;
+    top:-200px; right:-200px;
+    width:600px; height:600px;
+    background: radial-gradient(circle, rgba(200,212,0,0.05) 0%, transparent 70%);
+    pointer-events:none;
+  }
+
+  /* HEADER */
+  .header {
+    display:flex; justify-content:space-between; align-items:center;
+    margin-bottom:40px;
+  }
+  .logo-area { display:flex; align-items:center; gap:14px; }
+  .logo-mark {
+    width:50px; height:50px;
+    background:var(--yellow); border-radius:12px;
+    display:flex; align-items:center; justify-content:center;
+    font-weight:900; font-size:20px; color:#0e0e0e; letter-spacing:-1px;
+  }
+  .logo-name { font-size:22px; font-weight:800; color:var(--yellow); letter-spacing:-0.5px; line-height:1; }
+  .logo-sub { font-size:10px; color:var(--muted); letter-spacing:2px; text-transform:uppercase; margin-top:3px; font-family:'DM Mono',monospace; }
+  .header-right { display:flex; flex-direction:column; align-items:flex-end; gap:6px; }
+  .live-badge {
+    display:flex; align-items:center; gap:6px;
+    background:rgba(93,219,124,0.1); border:1px solid rgba(93,219,124,0.2);
+    border-radius:20px; padding:4px 12px; font-size:11px; color:var(--green);
+    font-family:'DM Mono',monospace;
+  }
+  .live-dot { width:6px; height:6px; background:var(--green); border-radius:50%; animation:blink 2s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+  .header-date { font-size:11px; color:var(--muted); font-family:'DM Mono',monospace; }
+
+  /* STATUS NOTION */
+  .notion-status {
+    display:flex; align-items:center; gap:8px;
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:10px; padding:10px 16px; margin-bottom:28px;
+    font-size:12px; font-family:'DM Mono',monospace;
+  }
+  .notion-dot { width:8px; height:8px; border-radius:50%; }
+  .notion-dot.connecting { background:var(--orange); animation:blink 1s infinite; }
+  .notion-dot.connected { background:var(--green); }
+  .notion-dot.error { background:var(--red); }
+
+  /* AUTH BUTTON */
+  .auth-section {
+    display:none;
+    flex-direction:column; align-items:center; justify-content:center;
+    min-height:300px; gap:20px; text-align:center;
+  }
+  .auth-section.visible { display:flex; }
+  .auth-btn {
+    background:var(--yellow); color:#0e0e0e;
+    border:none; border-radius:12px;
+    padding:16px 32px; font-size:16px; font-weight:700;
+    font-family:'Outfit',sans-serif; cursor:pointer;
+    transition:transform 0.2s, box-shadow 0.2s;
+  }
+  .auth-btn:hover { transform:translateY(-2px); box-shadow:0 8px 24px var(--yellow-glow); }
+  .auth-desc { color:var(--muted); font-size:13px; max-width:400px; line-height:1.6; }
+
+  /* DASHBOARD */
+  .dashboard { display:none; }
+  .dashboard.visible { display:block; }
+
+  /* KPIs */
+  .sec-label {
+    font-size:10px; font-weight:600; text-transform:uppercase;
+    letter-spacing:3px; color:var(--muted); margin-bottom:14px;
+    font-family:'DM Mono',monospace;
+  }
+  .kpi-row {
+    display:grid; grid-template-columns:repeat(5,1fr);
+    gap:14px; margin-bottom:32px;
+  }
+  .kpi {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:14px; padding:20px;
+    transition:border-color 0.2s, transform 0.2s;
+    position:relative; overflow:hidden;
+  }
+  .kpi:hover { border-color:var(--yellow); transform:translateY(-2px); }
+  .kpi.highlight {
+    border-color:rgba(200,212,0,0.4);
+    background:linear-gradient(135deg,#161616 0%,rgba(200,212,0,0.05) 100%);
+  }
+  .kpi.highlight::after {
+    content:''; position:absolute; top:0; left:0; right:0; height:2px;
+    background:var(--yellow);
+  }
+  .kpi-label { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:1.5px; margin-bottom:10px; font-family:'DM Mono',monospace; }
+  .kpi-val { font-size:22px; font-weight:800; letter-spacing:-1px; line-height:1; margin-bottom:6px; }
+  .kpi-val.yellow { color:var(--yellow); }
+  .kpi-val.green { color:var(--green); }
+  .kpi-val.orange { color:var(--orange); }
+  .kpi-val.white { color:var(--text); }
+  .kpi-desc { font-size:11px; color:var(--muted); }
+
+  /* META */
+  .meta-section { margin-bottom:32px; }
+  .meta-card {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:14px; padding:24px;
+  }
+  .meta-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+  .meta-title { font-size:14px; font-weight:700; }
+  .meta-vals { font-size:12px; color:var(--muted); font-family:'DM Mono',monospace; }
+  .meta-vals span { color:var(--yellow); font-weight:600; }
+  .meta-bar-bg {
+    height:12px; background:var(--surface2); border-radius:6px;
+    overflow:hidden; margin-bottom:10px;
+  }
+  .meta-bar-fill {
+    height:100%; border-radius:6px;
+    background:linear-gradient(90deg, var(--yellow) 0%, rgba(200,212,0,0.6) 100%);
+    transition:width 1s cubic-bezier(0.4,0,0.2,1);
+    box-shadow:0 0 12px var(--yellow-glow);
+  }
+  .meta-info { display:flex; justify-content:space-between; font-size:11px; color:var(--muted); font-family:'DM Mono',monospace; }
+  .meta-info .pct { color:var(--yellow); font-weight:700; font-size:13px; }
+
+  /* GRÁFICO GRANDE */
+  .chart-section { margin-bottom:32px; }
+  .chart-card {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:14px; padding:28px;
+  }
+  .chart-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; }
+  .chart-title { font-size:16px; font-weight:700; }
+  .chart-legend { display:flex; gap:20px; }
+  .legend-item { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--muted); font-family:'DM Mono',monospace; }
+  .legend-dot { width:8px; height:8px; border-radius:50%; }
+  .chart-wrap { position:relative; height:320px; }
+
+  /* SAÚDE */
+  .health-row {
+    display:grid; grid-template-columns:1fr 1fr;
+    gap:14px; margin-bottom:32px;
+  }
+
+  /* CLIENTES */
+  .card {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:14px; padding:24px; margin-bottom:32px;
+  }
+  .card-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; }
+  .card-title { font-size:14px; font-weight:700; }
+  table { width:100%; border-collapse:collapse; }
+  thead th {
+    font-size:9px; font-family:'DM Mono',monospace; color:var(--muted);
+    text-transform:uppercase; letter-spacing:2px;
+    padding:0 10px 12px; text-align:left;
+    border-bottom:1px solid var(--border);
+  }
+  tbody tr { transition:background 0.15s; }
+  tbody tr:hover { background:var(--surface2); }
+  tbody td { padding:13px 10px; font-size:13px; border-bottom:1px solid rgba(42,42,42,0.6); vertical-align:middle; }
+  tbody tr:last-child td { border-bottom:none; }
+  .pkg-badge { display:inline-block; padding:3px 10px; border-radius:20px; font-size:10px; font-weight:600; }
+  .pkg-alicerce { background:rgba(200,212,0,0.12); color:var(--yellow); }
+  .pkg-tracao { background:rgba(255,159,67,0.12); color:var(--orange); }
+  .pkg-expansao { background:rgba(93,219,124,0.12); color:var(--green); }
+  .status-dot { width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:6px; }
+  .status-ativo { background:var(--green); box-shadow:0 0 6px rgba(93,219,124,0.5); }
+
+  /* BOTTOM */
+  .bottom-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-bottom:32px; }
+  .pkg-row {
+    display:flex; justify-content:space-between; align-items:center;
+    padding:14px 16px; background:var(--surface2);
+    border-radius:10px; border:1px solid var(--border);
+    margin-bottom:10px; transition:border-color 0.2s;
+  }
+  .pkg-row:hover { border-color:var(--yellow); }
+  .pkg-row-name { font-size:13px; font-weight:600; margin-bottom:3px; }
+  .pkg-row-detail { font-size:11px; color:var(--muted); font-family:'DM Mono',monospace; }
+  .pkg-row-mrr { font-size:14px; font-weight:700; color:var(--yellow); text-align:right; }
+  .pkg-row-pct { font-size:10px; color:var(--muted); text-align:right; margin-top:2px; }
+
+  .venc-row {
+    display:flex; justify-content:space-between; align-items:center;
+    padding:12px 14px; background:var(--surface2);
+    border-radius:10px; border-left:3px solid transparent; margin-bottom:10px;
+  }
+  .venc-row.julho { border-left-color:var(--orange); }
+  .venc-row.agosto { border-left-color:var(--green); }
+  .venc-client { font-size:13px; font-weight:600; }
+  .venc-pkg { font-size:10px; color:var(--muted); margin-top:2px; }
+  .venc-mes { font-size:12px; font-family:'DM Mono',monospace; font-weight:600; }
+
+  .cost-row { display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--border); }
+  .cost-row:last-of-type { border-bottom:none; }
+  .cost-name { font-size:12px; color:var(--muted); }
+  .cost-val { font-size:13px; font-weight:600; font-family:'DM Mono',monospace; }
+  .cost-total {
+    display:flex; justify-content:space-between;
+    padding:14px 16px; background:var(--yellow-dim);
+    border:1px solid rgba(200,212,0,0.2); border-radius:10px; margin-top:8px;
+  }
+  .cost-total-label { font-size:12px; font-weight:700; color:var(--yellow); }
+  .cost-total-val { font-size:14px; font-weight:800; color:var(--yellow); font-family:'DM Mono',monospace; }
+
+  /* RECEITA ACUMULADA */
+  .acum-card {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:14px; padding:24px; margin-bottom:32px;
+    display:grid; grid-template-columns:repeat(4,1fr); gap:20px;
+  }
+  .acum-item { text-align:center; }
+  .acum-label { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:1.5px; margin-bottom:8px; font-family:'DM Mono',monospace; }
+  .acum-val { font-size:20px; font-weight:800; color:var(--yellow); letter-spacing:-0.5px; }
+  .acum-sub { font-size:11px; color:var(--muted); margin-top:4px; }
+
+  .footer { text-align:center; padding-top:24px; border-top:1px solid var(--border); font-size:11px; color:var(--muted2); font-family:'DM Mono',monospace; }
+
+  @media(max-width:1000px) {
+    .kpi-row { grid-template-columns:repeat(3,1fr); }
+    .bottom-grid { grid-template-columns:1fr; }
+    .health-row { grid-template-columns:1fr; }
+    .acum-card { grid-template-columns:repeat(2,1fr); }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="logo-area">
+    <div class="logo-mark">Me.</div>
+    <div>
+      <div class="logo-name">me produz.</div>
+      <div class="logo-sub">Dashboard MRR · 2025</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="live-badge"><span class="live-dot"></span>Ao vivo</div>
+    <div class="header-date" id="hdate"></div>
+  </div>
+</div>
+
+<!-- STATUS NOTION -->
+<div class="notion-status" id="notion-status">
+  <span class="notion-dot connecting" id="notion-dot"></span>
+  <span id="notion-status-text">Verificando conexão com Notion...</span>
+</div>
+
+<!-- AUTH SECTION -->
+<div class="auth-section" id="auth-section">
+  <div style="font-size:32px">🔗</div>
+  <div style="font-size:20px;font-weight:700">Conectar ao Notion</div>
+  <div class="auth-desc">Autorize o acesso ao seu workspace do Notion para carregar os dados do MRR automaticamente.</div>
+  <button class="auth-btn" onclick="iniciarAuth()">Conectar com Notion</button>
+</div>
+
+<!-- DASHBOARD -->
+<div class="dashboard" id="dashboard">
+
+  <!-- KPIs -->
+  <div class="sec-label">Visão Geral</div>
+  <div class="kpi-row">
+    <div class="kpi highlight">
+      <div class="kpi-label">MRR Atual</div>
+      <div class="kpi-val yellow" id="k-mrr">—</div>
+      <div class="kpi-desc">Receita recorrente mensal</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">ARR Projetado</div>
+      <div class="kpi-val white" id="k-arr">—</div>
+      <div class="kpi-desc">Se mantiver base atual</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Lucro Líquido</div>
+      <div class="kpi-val green" id="k-lucro">—</div>
+      <div class="kpi-desc">MRR − custo edição</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Clientes Ativos</div>
+      <div class="kpi-val orange" id="k-clientes">—</div>
+      <div class="kpi-desc">Contratos vigentes</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Ticket Médio</div>
+      <div class="kpi-val white" id="k-ticket">—</div>
+      <div class="kpi-desc">Por cliente/mês</div>
+    </div>
+  </div>
+
+  <!-- META -->
+  <div class="meta-section">
+    <div class="sec-label">Meta MRR 2026</div>
+    <div class="meta-card">
+      <div class="meta-header">
+        <div class="meta-title">Progresso em direção à meta</div>
+        <div class="meta-vals">Meta: <span>R$ 60.000,00</span></div>
+      </div>
+      <div class="meta-bar-bg">
+        <div class="meta-bar-fill" id="meta-fill" style="width:0%"></div>
+      </div>
+      <div class="meta-info">
+        <span id="meta-atual">MRR atual: —</span>
+        <span class="pct" id="meta-pct">0%</span>
+        <span id="meta-falta">Faltam: —</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- GRÁFICO GRANDE -->
+  <div class="chart-section">
+    <div class="sec-label">Evolução MRR</div>
+    <div class="chart-card">
+      <div class="chart-header">
+        <div class="chart-title">MRR Mês a Mês — 2025</div>
+        <div class="chart-legend">
+          <div class="legend-item"><span class="legend-dot" style="background:var(--yellow)"></span>MRR Real</div>
+          <div class="legend-item"><span class="legend-dot" style="background:rgba(200,212,0,0.3)"></span>Projeção</div>
+        </div>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="mrrChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- SAÚDE DA CARTEIRA -->
+  <div class="sec-label">Saúde da Carteira</div>
+  <div class="health-row">
+    <div class="card" style="margin-bottom:0">
+      <div class="card-header">
+        <div class="card-title">⚠️ Vencimentos Próximos</div>
+        <div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace">Próximos 90 dias</div>
+      </div>
+      <div id="health-venc"></div>
+    </div>
+    <div class="card" style="margin-bottom:0">
+      <div class="card-header">
+        <div class="card-title">📊 Receita em Risco</div>
+      </div>
+      <div id="health-risco"></div>
+    </div>
+  </div>
+  <div style="margin-bottom:32px"></div>
+
+  <!-- RECEITA ACUMULADA -->
+  <div class="sec-label">Receita Acumulada 2025</div>
+  <div class="acum-card" id="acum-card"></div>
+
+  <!-- CLIENTES -->
+  <div class="sec-label">Clientes Ativos</div>
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Contratos Vigentes</div>
+      <div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace" id="contrato-count">—</div>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Cliente</th><th>Pacote</th><th>Valor/mês</th>
+          <th>Vídeos</th><th>Custo Ed.</th><th>Margem</th><th>Vencimento</th>
+        </tr>
+      </thead>
+      <tbody id="client-table"></tbody>
+    </table>
+  </div>
+
+  <!-- BOTTOM -->
+  <div class="bottom-grid">
+    <div class="card" style="margin-bottom:0">
+      <div class="card-header"><div class="card-title">MRR por Pacote</div></div>
+      <div id="pkg-list"></div>
+    </div>
+    <div class="card" style="margin-bottom:0">
+      <div class="card-header"><div class="card-title">Vencimentos</div></div>
+      <div id="venc-list"></div>
+    </div>
+    <div class="card" style="margin-bottom:0">
+      <div class="card-header"><div class="card-title">Custo de Produção</div></div>
+      <div id="cost-list"></div>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer" style="margin-top:32px">
+  me produz. · Dashboard MRR · Conectado ao Notion
+</div>
+
+<script>
+// ============================================================
+// CONFIGURAÇÃO
+// ============================================================
+const CLIENT_ID = '319d872b-594c-81c0-a752-00376aad9378';
+const REDIRECT_URI = window.location.href.split('?')[0].split('#')[0];
+const DB_ID = '2ff8ffee08be80529986e6d1e47f9397';
+const META_MRR = 60000;
+const CUSTO_VIDEO = 40;
+const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+const MES_ATUAL = new Date().getMonth(); // 0-based
+
+// ============================================================
+// DADOS FALLBACK (caso Notion não conecte)
+// ============================================================
+const FALLBACK = [
+  { nome:'Melhor Sorriso', pacote:'Expansão', valor:2499.99, videos:10, fimMes:8, fim:'Ago' },
+  { nome:'Sorria Salto',   pacote:'Expansão', valor:2499.99, videos:10, fimMes:8, fim:'Ago' },
+  { nome:'Ibirá Florestal',pacote:'Expansão', valor:2499.99, videos:10, fimMes:7, fim:'Jul' },
+  { nome:'Seu Eletro Aqui',pacote:'Alicerce', valor:1500.00, videos:4,  fimMes:8, fim:'Ago' },
+  { nome:'Gráfica Mil',    pacote:'Alicerce', valor:700.00,  videos:4,  fimMes:7, fim:'Jul' },
+  { nome:'Scuderia',       pacote:'Tração',   valor:1799.99, videos:6,  fimMes:7, fim:'Jul' },
+];
+
+const MRR_HIST_FALLBACK = [9999.96,11499.96,11499.96,11499.96,11499.96,11499.96,11499.96,8699.98,0,0,0,0];
+
+// ============================================================
+// UTILITÁRIOS
+// ============================================================
+function fmt(v) { return 'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function fmtK(v) { return v>=1000?'R$ '+(v/1000).toFixed(1)+'k':fmt(v); }
+function pkgClass(p) { return p==='Alicerce'?'pkg-alicerce':p==='Tração'?'pkg-tracao':'pkg-expansao'; }
+const VIDEOS_PKG = {'Alicerce':4,'Tração':6,'Expansão':10};
+
+// ============================================================
+// AUTH NOTION
+// ============================================================
+function setStatus(msg, state) {
+  const dot = document.getElementById('notion-dot');
+  const txt = document.getElementById('notion-status-text');
+  txt.textContent = msg;
+  dot.className = 'notion-dot ' + state;
+}
+
+function iniciarAuth() {
+  const url = `https://api.notion.com/v1/oauth/authorize?client_id=${CLIENT_ID}&response_type=code&owner=user&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`;
+  window.location.href = url;
+}
+
+async function trocarCodigo(code) {
+  // Como é client-side, usamos proxy CORS ou fallback
+  // Tenta via proxy público
+  try {
+    setStatus('Autenticando com Notion...', 'connecting');
+    const resp = await fetch('https://api.notion.com/v1/oauth/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Basic ' + btoa(`${CLIENT_ID}:${NOTION_SECRET}`),
+        'Notion-Version': '2022-06-28'
+      },
+      body: JSON.stringify({ grant_type:'authorization_code', code, redirect_uri: REDIRECT_URI })
+    });
+    if (resp.ok) {
+      const data = await resp.json();
+      localStorage.setItem('notion_token', data.access_token);
+      window.history.replaceState({}, document.title, window.location.pathname);
+      return data.access_token;
+    }
+  } catch(e) {}
+  return null;
+}
+
+async function carregarNotion(token) {
+  try {
+    setStatus('Carregando dados do Notion...', 'connecting');
+    const resp = await fetch(`https://api.notion.com/v1/databases/${DB_ID}/query`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Notion-Version': '2022-06-28',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ filter: { property:'Ativo', checkbox:{ equals:true } } })
+    });
+
+    if (!resp.ok) throw new Error('Falha ao carregar');
+
+    const data = await resp.json();
+    const clientes = data.results.map(row => {
+      const props = row.properties;
+      const nome = props.Cliente?.title?.[0]?.plain_text || 'Cliente';
+      const ativo = props.Ativo?.checkbox || false;
+      const meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+      let valor = 0;
+      for (const m of meses) {
+        const v = props[m]?.number;
+        if (v && v > 0) valor = v;
+      }
+      // Detecta pacote pelo valor
+      let pacote = 'Alicerce', videos = 4;
+      if (valor >= 3000) { pacote='Expansão'; videos=10; }
+      else if (valor >= 1700) { pacote='Tração'; videos=6; }
+
+      return { nome, pacote, valor, videos, fimMes:7, fim:'Jul', ativo };
+    }).filter(c => c.ativo && c.valor > 0);
+
+    if (clientes.length === 0) throw new Error('Sem dados ativos');
+
+    setStatus(`Conectado ao Notion · ${clientes.length} clientes carregados`, 'connected');
+    return { clientes, mrrHist: MRR_HIST_FALLBACK };
+  } catch(e) {
+    throw e;
+  }
+}
+
+// ============================================================
+// RENDERIZAR DASHBOARD
+// ============================================================
+function renderDashboard(clientes, mrrHist) {
+  document.getElementById('dashboard').classList.add('visible');
+  document.getElementById('auth-section').classList.remove('visible');
+
+  const mrr = clientes.reduce((s,c)=>s+c.valor,0);
+  const totalVideos = clientes.reduce((s,c)=>s+c.videos,0);
+  const custoTotal = totalVideos * CUSTO_VIDEO;
+  const lucro = mrr - custoTotal;
+  const arr = mrr * 12;
+  const ticket = mrr / clientes.length;
+
+  // KPIs
+  document.getElementById('k-mrr').textContent = fmt(mrr);
+  document.getElementById('k-arr').textContent = fmt(arr);
+  document.getElementById('k-lucro').textContent = fmt(lucro);
+  document.getElementById('k-lucro').className = 'kpi-val ' + (lucro>=0?'green':'red');
+  document.getElementById('k-clientes').textContent = clientes.length;
+  document.getElementById('k-ticket').textContent = fmt(ticket);
+
+  // Meta
+  const pct = Math.min(100, (mrr/META_MRR)*100);
+  document.getElementById('meta-fill').style.width = pct.toFixed(1)+'%';
+  document.getElementById('meta-pct').textContent = pct.toFixed(1)+'%';
+  document.getElementById('meta-atual').textContent = 'MRR atual: '+fmt(mrr);
+  document.getElementById('meta-falta').textContent = 'Faltam: '+fmt(Math.max(0,META_MRR-mrr));
+
+  // Data
+  document.getElementById('hdate').textContent = new Date().toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'short',year:'numeric'});
+
+  // GRÁFICO
+  const labels = MESES;
+  const realData = mrrHist.map((v,i) => i <= MES_ATUAL ? v : null);
+  const projData = mrrHist.map((v,i) => i >= MES_ATUAL ? (v > 0 ? v : mrr) : null);
+
+  const ctx = document.getElementById('mrrChart').getContext('2d');
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'MRR Real',
+          data: realData,
+          borderColor: '#c8d400',
+          backgroundColor: 'rgba(200,212,0,0.08)',
+          borderWidth: 3,
+          pointBackgroundColor: '#c8d400',
+          pointRadius: 5,
+          pointHoverRadius: 8,
+          tension: 0.4,
+          fill: true,
+        },
+        {
+          label: 'Projeção',
+          data: projData,
+          borderColor: 'rgba(200,212,0,0.35)',
+          backgroundColor: 'rgba(200,212,0,0.03)',
+          borderWidth: 2,
+          borderDash: [6,4],
+          pointBackgroundColor: 'rgba(200,212,0,0.35)',
+          pointRadius: 4,
+          tension: 0.4,
+          fill: true,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode:'index', intersect:false },
+      plugins: {
+        legend: { display:false },
+        tooltip: {
+          backgroundColor: '#1e1e1e',
+          borderColor: '#2a2a2a',
+          borderWidth: 1,
+          titleColor: '#c8d400',
+          bodyColor: '#f0f0f0',
+          callbacks: {
+            label: ctx => ' '+fmt(ctx.raw || 0)
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color:'rgba(255,255,255,0.04)' },
+          ticks: { color:'#666', font:{ family:'DM Mono', size:11 } }
+        },
+        y: {
+          grid: { color:'rgba(255,255,255,0.04)' },
+          ticks: {
+            color:'#666', font:{ family:'DM Mono', size:11 },
+            callback: v => fmtK(v)
+          }
+        }
+      }
+    }
+  });
+
+  // SAÚDE DA CARTEIRA
+  const vencHtml = clientes
+    .sort((a,b)=>a.fimMes-b.fimMes)
+    .map(c => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--surface2);border-radius:10px;margin-bottom:8px;border-left:3px solid ${c.fimMes<=7?'var(--orange)':'var(--green)'}">
+        <div>
+          <div style="font-size:13px;font-weight:600">${c.nome}</div>
+          <div style="font-size:11px;color:var(--muted)">${fmt(c.valor)}/mês</div>
+        </div>
+        <div style="font-size:12px;font-family:'DM Mono',monospace;font-weight:600;color:${c.fimMes<=7?'var(--orange)':'var(--green)'}">${c.fim}/25</div>
+      </div>
+    `).join('');
+  document.getElementById('health-venc').innerHTML = vencHtml;
+
+  const mrrRisco = clientes.filter(c=>c.fimMes<=7).reduce((s,c)=>s+c.valor,0);
+  const mrrSeguro = mrr - mrrRisco;
+  document.getElementById('health-risco').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px">
+      <div style="background:rgba(255,77,109,0.08);border:1px solid rgba(255,77,109,0.2);border-radius:10px;padding:16px;text-align:center">
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px;font-family:'DM Mono',monospace">Vence Jul/25</div>
+        <div style="font-size:20px;font-weight:800;color:var(--red)">${fmt(mrrRisco)}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">${clientes.filter(c=>c.fimMes<=7).length} contratos</div>
+      </div>
+      <div style="background:rgba(93,219,124,0.08);border:1px solid rgba(93,219,124,0.2);border-radius:10px;padding:16px;text-align:center">
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px;font-family:'DM Mono',monospace">Vence Ago/25</div>
+        <div style="font-size:20px;font-weight:800;color:var(--green)">${fmt(mrrSeguro)}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">${clientes.filter(c=>c.fimMes>7).length} contratos</div>
+      </div>
+    </div>
+    <div style="margin-top:16px;padding:14px;background:var(--surface2);border-radius:10px;font-size:12px;color:var(--muted);line-height:1.6">
+      💡 <strong style="color:var(--text)">${((mrrRisco/mrr)*100).toFixed(0)}% do MRR</strong> vence em Julho. Inicie as conversas de renovação com antecedência!
+    </div>
+  `;
+
+  // RECEITA ACUMULADA
+  const acumTotal = mrrHist.slice(0, MES_ATUAL+1).reduce((s,v)=>s+v,0);
+  const mediaMensal = acumTotal / (MES_ATUAL+1);
+  const projecaoAnual = mrrHist.slice(0,MES_ATUAL+1).reduce((s,v)=>s+v,0) + mrr*(11-MES_ATUAL);
+  document.getElementById('acum-card').innerHTML = `
+    <div class="acum-item">
+      <div class="acum-label">Acumulado 2025</div>
+      <div class="acum-val">${fmt(acumTotal)}</div>
+      <div class="acum-sub">Jan → ${MESES[MES_ATUAL]}</div>
+    </div>
+    <div class="acum-item">
+      <div class="acum-label">Média Mensal</div>
+      <div class="acum-val">${fmt(mediaMensal)}</div>
+      <div class="acum-sub">nos últimos ${MES_ATUAL+1} meses</div>
+    </div>
+    <div class="acum-item">
+      <div class="acum-label">Projeção Anual</div>
+      <div class="acum-val">${fmt(projecaoAnual)}</div>
+      <div class="acum-sub">se mantiver MRR atual</div>
+    </div>
+    <div class="acum-item">
+      <div class="acum-label">% da Meta</div>
+      <div class="acum-val" style="color:var(--green)">${((projecaoAnual/(META_MRR*12))*100).toFixed(0)}%</div>
+      <div class="acum-sub">da meta anual R$ ${fmtK(META_MRR*12)}</div>
+    </div>
+  `;
+
+  // TABELA CLIENTES
+  const tbody = document.getElementById('client-table');
+  document.getElementById('contrato-count').textContent = `${clientes.length} contratos · ciclo 6 meses`;
+  tbody.innerHTML = clientes.map(c => {
+    const custo = c.videos*CUSTO_VIDEO;
+    const margem = c.valor-custo;
+    const pctM = ((margem/c.valor)*100).toFixed(0);
+    return `<tr>
+      <td><span class="status-dot status-ativo"></span><strong>${c.nome}</strong></td>
+      <td><span class="pkg-badge ${pkgClass(c.pacote)}">${c.pacote}</span></td>
+      <td style="font-family:'DM Mono',monospace;font-weight:600">${fmt(c.valor)}</td>
+      <td style="text-align:center;color:var(--muted)">${c.videos}</td>
+      <td style="font-family:'DM Mono',monospace;color:var(--red)">−${fmt(custo)}</td>
+      <td style="font-family:'DM Mono',monospace;color:var(--green)">${fmt(margem)} <span style="color:var(--muted);font-size:10px">(${pctM}%)</span></td>
+      <td style="font-family:'DM Mono',monospace;color:${c.fimMes<=7?'var(--orange)':'var(--green)'}">${c.fim}/25</td>
+    </tr>`;
+  }).join('') + `
+    <tr style="background:rgba(200,212,0,0.04)">
+      <td colspan="2" style="font-weight:700;color:var(--yellow);font-family:'DM Mono',monospace">TOTAL</td>
+      <td style="font-family:'DM Mono',monospace;font-weight:800;color:var(--yellow)">${fmt(mrr)}</td>
+      <td style="text-align:center;font-weight:700">${totalVideos}</td>
+      <td style="font-family:'DM Mono',monospace;color:var(--red);font-weight:700">−${fmt(custoTotal)}</td>
+      <td style="font-family:'DM Mono',monospace;font-weight:800;color:var(--green)">${fmt(lucro)}</td>
+      <td></td>
+    </tr>
+  `;
+
+  // PACOTES
+  const pkgData = {};
+  clientes.forEach(c => {
+    if (!pkgData[c.pacote]) pkgData[c.pacote] = {mrr:0,count:0};
+    pkgData[c.pacote].mrr += c.valor;
+    pkgData[c.pacote].count++;
+  });
+  document.getElementById('pkg-list').innerHTML = Object.entries(pkgData).map(([nome,d]) => `
+    <div class="pkg-row">
+      <div>
+        <div class="pkg-row-name"><span class="pkg-badge ${pkgClass(nome)}">${nome}</span></div>
+        <div class="pkg-row-detail">${d.count} cliente${d.count>1?'s':''} · ${VIDEOS_PKG[nome]} vídeos/mês</div>
+      </div>
+      <div>
+        <div class="pkg-row-mrr">${fmt(d.mrr)}</div>
+        <div class="pkg-row-pct">${((d.mrr/mrr)*100).toFixed(1)}% do MRR</div>
+      </div>
+    </div>
+  `).join('');
+
+  // VENCIMENTOS
+  const porMes = {};
+  clientes.forEach(c => { if(!porMes[c.fimMes]) porMes[c.fimMes]=[]; porMes[c.fimMes].push(c); });
+  document.getElementById('venc-list').innerHTML = Object.entries(porMes).sort().map(([mes,clts]) =>
+    clts.map(c => `
+      <div class="venc-row ${mes<=7?'julho':'agosto'}">
+        <div>
+          <div class="venc-client">${c.nome}</div>
+          <div class="venc-pkg">${c.pacote} · ${fmt(c.valor)}/mês</div>
+        </div>
+        <div class="venc-mes">${c.fim}/25</div>
+      </div>
+    `).join('')
+  ).join('');
+
+  // CUSTOS
+  document.getElementById('cost-list').innerHTML =
+    clientes.map(c => `
+      <div class="cost-row">
+        <div class="cost-name">${c.nome} (${c.videos} vídeos)</div>
+        <div class="cost-val" style="color:var(--red)">−${fmt(c.videos*CUSTO_VIDEO)}</div>
+      </div>
+    `).join('') + `
+    <div class="cost-total">
+      <div class="cost-total-label">Total/mês</div>
+      <div class="cost-total-val">−${fmt(custoTotal)}</div>
+    </div>
+  `;
+}
+
+// ============================================================
+// INICIALIZAÇÃO
+// ============================================================
+async function init() {
+  document.getElementById('hdate').textContent = new Date().toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'short',year:'numeric'});
+
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get('code');
+  const token = localStorage.getItem('notion_token');
+
+  if (code) {
+    // Voltou do OAuth
+    const newToken = await trocarCodigo(code);
+    if (newToken) {
+      try {
+        const { clientes, mrrHist } = await carregarNotion(newToken);
+        renderDashboard(clientes, mrrHist);
+        return;
+      } catch(e) {}
+    }
+    // Falhou — usa fallback
+    setStatus('Conectado (dados locais)', 'connected');
+    renderDashboard(FALLBACK, MRR_HIST_FALLBACK);
+    return;
+  }
+
+  if (token) {
+    // Tem token salvo
+    try {
+      const { clientes, mrrHist } = await carregarNotion(token);
+      renderDashboard(clientes, mrrHist);
+      return;
+    } catch(e) {
+      localStorage.removeItem('notion_token');
+    }
+  }
+
+  // Sem token — mostra botão de auth ou carrega fallback
+  setStatus('Dados locais — clique para conectar ao Notion', 'error');
+  document.getElementById('auth-section').classList.add('visible');
+  renderDashboard(FALLBACK, MRR_HIST_FALLBACK);
+}
+
+init();
+</script>
+</body>
+</html>
