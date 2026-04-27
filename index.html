@@ -710,7 +710,22 @@ async function saveLeadDB(){
   closeModal();
   ['f-nome','f-tel','f-obs-modal','f-valor'].forEach(id=>document.getElementById(id).value='');
   ['f-seg','f-orig','f-int-modal'].forEach(id=>document.getElementById(id).selectedIndex=0);
-  await loadLeads();
+  // Adiciona localmente sem recarregar do banco
+  leads.unshift({
+    id:data.id,
+    nome:data.nome,
+    tel:data.telefone||'',
+    seg:data.segmento||'',
+    orig:data.origem||'',
+    int:data.interesse||'',
+    obs:data.observacao||'',
+    valor:data.valor||null,
+    status:'novo',
+    data:hoje(),
+    hora:agora(),
+    hist:[`${hoje()} ${agora()} — Lead criado`],
+  });
+  renderAll();
 }
 
 async function moveLeadDB(id,ns){
@@ -720,7 +735,9 @@ async function moveLeadDB(id,ns){
   // Atualiza localmente primeiro (otimista)
   l.status=ns;
   l.hist=[...l.hist,`${hoje()} ${agora()} — Movido para ${label}`];
-  renderAll();
+  renderBoard();
+  renderDashboard();
+  updateBadge();
   if(activeId===id)openPanel(id);
   // Salva no banco em segundo plano
   supa.from('leads').update({status:ns}).eq('id',id);
@@ -731,16 +748,19 @@ async function updateLeadField(field,val){
   const l=leads.find(x=>x.id===activeId);
   if(!l)return;
   const map={nome:'nome',tel:'telefone',int:'interesse',obs:'observacao',valor:'valor'};
-  if(map[field])await supa.from('leads').update({[map[field]]:val||null}).eq('id',activeId);
+  if(map[field]) supa.from('leads').update({[map[field]]:val||null}).eq('id',activeId);
   l[field]=val;
-  renderAll();
+  renderBoard();
+  updateBadge();
 }
 
 async function deleteLeadDB(){
   if(!confirm('Remover este lead?'))return;
-  await supa.from('leads').delete().eq('id',activeId);
+  const id=activeId;
   closePanel();
-  await loadLeads();
+  leads=leads.filter(l=>l.id!==id);
+  renderAll();
+  supa.from('leads').delete().eq('id',id);
 }
 
 async function saveMeta(){
