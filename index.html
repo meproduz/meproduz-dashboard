@@ -419,7 +419,7 @@ input,select,textarea,button{font-family:'Poppins',sans-serif;}
               <div class="meta-title">Meta do mês</div>
               <div class="meta-subtitle" id="meta-period">Carregando...</div>
             </div>
-            <div class="meta-valor" id="meta-display-head">Carregando...</div>
+            <div style="text-align:right;"><div style="font-size:11px;font-weight:300;color:var(--text3);margin-bottom:4px;">meta mensal</div><div style="font-size:20px;font-weight:800;color:var(--accent);" id="meta-display-head">Carregando...</div></div>
           </div>
           <div class="meta-content">
             <svg width="140" height="140" viewBox="0 0 140 140" id="meta-svg">
@@ -505,7 +505,7 @@ input,select,textarea,button{font-family:'Poppins',sans-serif;}
               <div><div class="config-label">Meta de receita</div><div class="config-sub">Valor alvo de fechamento no mês</div></div>
               <div style="display:flex;gap:8px;align-items:center;">
                 <input class="config-input" type="number" id="meta-input" placeholder="Ex: 60000">
-                <button class="config-btn" onclick="saveMeta()">Salvar</button>
+                <button class="config-btn" id="meta-save-btn" onclick="saveMeta()">Salvar</button>
               </div>
             </div>
           </div>
@@ -766,14 +766,21 @@ async function deleteLeadDB(){
 async function saveMeta(){
   const val=parseInt(document.getElementById('meta-input').value);
   if(!val||val<=0){alert('Informe um valor válido');return;}
+  const btn=document.getElementById('meta-save-btn');
+  btn.textContent='Salvando...';
+  const{data,error}=await supa.from('clientes').update({meta_mensal:val}).eq('id',clienteId).select();
+  if(error){
+    console.error('Erro RLS:',error);
+    // Tenta upsert como alternativa
+    const{error:e2}=await supa.from('clientes').upsert({id:clienteId,meta_mensal:val});
+    if(e2){btn.textContent='Salvar';alert('Erro ao salvar: '+e2.message);return;}
+  }
   metaMensal=val;
   renderDashboard();
-  const{error}=await supa.from('clientes').update({meta_mensal:val}).eq('id',clienteId);
-  if(error){console.error(error);alert('Erro ao salvar meta');}
-  else{
-    const btn=document.querySelector('.config-btn');
-    if(btn){const t=btn.textContent;btn.textContent='Salvo!';btn.style.background='#22C55E';setTimeout(()=>{btn.textContent=t;btn.style.background='';},2000);}
-  }
+  btn.textContent='Salvo!';
+  btn.style.background='#22C55E';
+  btn.style.color='#fff';
+  setTimeout(()=>{btn.textContent='Salvar';btn.style.background='';btn.style.color='';},2000);
 }
 
 // RENDER
@@ -807,7 +814,7 @@ function renderDashboard(){
   const dash=Math.min(pct/100*circ,circ);
   document.getElementById('meta-arc').setAttribute('stroke-dasharray',`${dash} ${circ}`);
   document.getElementById('meta-pct-text').textContent=pct+'%';
-  document.getElementById('meta-display-head').innerHTML=`${fmtR(mrr)} de <span>${fmtR(metaMensal)}</span>`;
+  document.getElementById('meta-display-head').textContent=fmtR(metaMensal);
   const meses=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
   document.getElementById('meta-period').textContent=`Progresso de ${meses[new Date().getMonth()]} ${new Date().getFullYear()}`;
   document.getElementById('mb-receita').textContent=fmtR(mrr);
