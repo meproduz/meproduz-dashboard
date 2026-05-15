@@ -739,9 +739,10 @@ async function moveLeadDB(id,ns){
   renderDashboard();
   updateBadge();
   if(activeId===id)openPanel(id);
-  // Salva no banco em segundo plano
-  supa.from('leads').update({status:ns}).eq('id',id);
-  supa.from('leads_historico').insert({lead_id:id,descricao:`${hoje()} ${agora()} — Movido para ${label}`});
+  // Salva no banco
+  const{error}=await supa.from('leads').update({status:ns}).eq('id',id);
+  if(error){console.error('Erro ao mover lead:',error);alert('Erro ao salvar posição. Recarregue a página.');await loadLeads();return;}
+  await supa.from('leads_historico').insert({lead_id:id,descricao:`${hoje()} ${agora()} — Movido para ${label}`});
 }
 
 async function updateLeadField(field,val){
@@ -760,7 +761,8 @@ async function deleteLeadDB(){
   closePanel();
   leads=leads.filter(l=>l.id!==id);
   renderAll();
-  supa.from('leads').delete().eq('id',id);
+  const{error}=await supa.from('leads').delete().eq('id',id);
+  if(error){console.error('Erro ao deletar:',error);await loadLeads();}
 }
 
 async function saveMeta(){
