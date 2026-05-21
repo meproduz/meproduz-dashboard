@@ -761,6 +761,8 @@ async function deleteLeadDB(){
   closePanel();
   leads=leads.filter(l=>l.id!==id);
   renderAll();
+  // Apaga histórico primeiro para evitar erro de chave estrangeira
+  await supa.from('leads_historico').delete().eq('lead_id',id);
   const{error}=await supa.from('leads').delete().eq('id',id);
   if(error){console.error('Erro ao deletar:',error);await loadLeads();}
 }
@@ -924,10 +926,18 @@ function setupDrag(){
   document.querySelectorAll('.card').forEach(c=>{
     c.addEventListener('dragstart',e=>{dragId=c.dataset.id;setTimeout(()=>c.classList.add('dragging'),0);e.dataTransfer.effectAllowed='move';});
     c.addEventListener('dragend',()=>c.classList.remove('dragging'));
+    // Permite soltar sobre outro card (evento sobe ao col se não tratado aqui)
+    c.addEventListener('dragover',e=>{e.preventDefault();e.stopPropagation();const col=c.closest('.col');if(col)col.classList.add('drag-over-col');});
+    c.addEventListener('dragleave',e=>{e.stopPropagation();});
+    c.addEventListener('drop',e=>{
+      e.preventDefault();e.stopPropagation();
+      const col=c.closest('.col');
+      if(col){col.classList.remove('drag-over-col');if(dragId)moveLeadDB(dragId,col.dataset.col);}
+    });
   });
   document.querySelectorAll('.col').forEach(col=>{
     col.addEventListener('dragover',e=>{e.preventDefault();col.classList.add('drag-over-col');});
-    col.addEventListener('dragleave',()=>col.classList.remove('drag-over-col'));
+    col.addEventListener('dragleave',e=>{if(!col.contains(e.relatedTarget))col.classList.remove('drag-over-col');});
     col.addEventListener('drop',e=>{
       e.preventDefault();col.classList.remove('drag-over-col');
       if(dragId)moveLeadDB(dragId,col.dataset.col);
